@@ -169,35 +169,38 @@ void EvalvidClient::HandleRead(Ptr<Socket> socket)
                  *
                  *MAS ESTE DIA NÃO É HOJE.
                  */
-                std::ofstream receiverWindowFile;
-                receiverWindowFile.open(receiverWindowFileName, std::ofstream::out | std::ofstream::app);
-                receiverWindowFile << packetId << std::endl;
+                if (!receiverWindowFileName.empty()) {
+                    std::string tmpFile = receiverWindowFileName + "_tmp";
+                    std::ofstream receiverWindowFile;
+                    receiverWindowFile.open(receiverWindowFileName, std::ofstream::out | std::ofstream::app);
+                    receiverWindowFile << packetId << std::endl;
 
-                std::ifstream ifWindow(receiverWindowFileName);
-                std::ifstream ifWindow2(receiverWindowFileName);
-                std::ofstream ofWindow("rcv_window_temp");
+                    std::ifstream ifWindow(receiverWindowFileName);
+                    std::ifstream ifWindow2(receiverWindowFileName);
+                    std::ofstream ofWindow(tmpFile.c_str());
 
-                while (std::getline(ifWindow, line)) {
-                    ++nPacketsList;
-                }
-
-                if (nPacketsList == 21) {
-                    while (std::getline(ifWindow2, line)) {
-                        if (nPackets2)
-                            ofWindow << line << std::endl;
-                        nPackets2 = true;
+                    while (std::getline(ifWindow, line)) {
+                        ++nPacketsList;
                     }
-                    nPackets2 = false;
 
-                    if (std::remove(receiverWindowFileName.c_str()))
-                        NS_LOG_DEBUG(">> EvalvidClient: Error deleting temp files.");
-                    std::rename("rcv_window_temp", receiverWindowFileName.c_str());
+                    if (nPacketsList == 21) {
+                        while (std::getline(ifWindow2, line)) {
+                            if (nPackets2)
+                                ofWindow << line << std::endl;
+                            nPackets2 = true;
+                        }
+                        nPackets2 = false;
+
+                        if (std::remove(receiverWindowFileName.c_str()))
+                            NS_LOG_DEBUG(">> EvalvidClient: Error deleting temp files.");
+                        std::rename(tmpFile.c_str(), receiverWindowFileName.c_str());
+                    }
+
+                    receiverWindowFile.close();
+                    ifWindow.close();
+                    ifWindow2.close();
+                    ofWindow.close();
                 }
-
-                receiverWindowFile.close();
-                ifWindow.close();
-                ifWindow2.close();
-                ofWindow.close();
             }
         }
     }

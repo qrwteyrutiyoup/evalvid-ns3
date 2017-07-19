@@ -21,10 +21,10 @@
 
 // Network topology
 //
-//       n0    n1
-//       |     |
-//       =======
-//         LAN
+//       n0    n1     n2
+//       |     |      |
+//       ==============
+//            LAN
 //
 // - UDP flows from n0 to n1
 
@@ -43,6 +43,8 @@ NS_LOG_COMPONENT_DEFINE ("EvalvidClientServerExample");
 int
 main (int argc, char *argv[])
 {
+  RngSeedManager::SetSeed (10);
+  RngSeedManager::SetRun (30);
 //
 // Enable logging for EvalvidClient and
 //
@@ -60,7 +62,7 @@ main (int argc, char *argv[])
 //
   NS_LOG_INFO ("Create nodes.");
   NodeContainer n;
-  n.Create (2);
+  n.Create (3);
 
   InternetStackHelper internet;
   internet.Install (n);
@@ -92,22 +94,43 @@ main (int argc, char *argv[])
   //
   uint16_t port = 4000;
   EvalvidServerHelper server (port);
-  server.SetAttribute ("SenderTraceFilename", StringValue("st_highway_cif.st"));
-  server.SetAttribute ("SenderDumpFilename", StringValue("sd_a01"));
+  server.SetAttribute ("SenderTraceFilename", StringValue("st_container_cif_h264_300_20.st"));
+  server.SetAttribute ("SenderDumpFilename", StringValue("sd_0"));
   server.SetAttribute ("PacketPayload",UintegerValue(1014));
   ApplicationContainer apps = server.Install (n.Get(1));
   apps.Start (Seconds (9.0));
   apps.Stop (Seconds (101.0));
 
 
+  uint16_t port2 = 6000;
+  EvalvidServerHelper server2 (port2);
+  server2.SetAttribute ("SenderTraceFilename", StringValue("st_container_cif_h264_300_20.st"));
+  server2.SetAttribute ("SenderDumpFilename", StringValue("sd_1"));
+  server2.SetAttribute ("PacketPayload",UintegerValue(1014));
+  ApplicationContainer apps2 = server2.Install (n.Get(1));
+  apps2.Start (Seconds (9.0));
+  apps2.Stop (Seconds (101.0));
+
   //
   // Create one EvalvidClient application
   //
   EvalvidClientHelper client (i.GetAddress (1),port);
-  client.SetAttribute ("ReceiverDumpFilename", StringValue("rd_a01"));
+  client.SetAttribute ("ReceiverDumpFilename", StringValue("rd_0"));
+  client.SetAttribute ("receiverWindowFileName", StringValue("wd_a0_0"));
   apps = client.Install (n.Get (0));
   apps.Start (Seconds (10.0));
   apps.Stop (Seconds (100.0));
+
+
+  //
+  // Create one EvalvidClient application
+  //
+  EvalvidClientHelper client2 (i.GetAddress (1),port2);
+  client2.SetAttribute ("ReceiverDumpFilename", StringValue("rd_1"));
+  client2.SetAttribute ("receiverWindowFileName", StringValue("wd_a0_1"));
+  apps2 = client2.Install (n.Get (2));
+  apps2.Start (Seconds (10.0));
+  apps2.Stop (Seconds (100.0));
 
 
   //
