@@ -18,6 +18,7 @@
  * Author: Billy Pinheiro <haquiticos@gmail.com>
  *         Saulo da Mata <damata.saulo@gmail.com>
  */
+
 #include "ns3/log.h"
 #include "ns3/ipv4-address.h"
 #include "ns3/nstime.h"
@@ -33,140 +34,171 @@
 #include <stdio.h>
 #include "ns3/string.h"
 
-
 namespace ns3 {
 
-NS_LOG_COMPONENT_DEFINE ("EvalvidClient");
-NS_OBJECT_ENSURE_REGISTERED (EvalvidClient);
+NS_LOG_COMPONENT_DEFINE("EvalvidClient");
+NS_OBJECT_ENSURE_REGISTERED(EvalvidClient);
 
-TypeId
-EvalvidClient::GetTypeId (void)
+TypeId EvalvidClient::GetTypeId(void)
 {
-  static TypeId tid = TypeId ("ns3::EvalvidClient")
-    .SetParent<Application> ()
-    .AddConstructor<EvalvidClient> ()
-    .AddAttribute ("RemoteAddress",
-                   "The destination Ipv4Address of the outbound packets",
-                   Ipv4AddressValue (),
-                   MakeIpv4AddressAccessor (&EvalvidClient::m_peerAddress),
-                   MakeIpv4AddressChecker ())
-    .AddAttribute ("RemotePort", "The destination port of the outbound packets",
-                   UintegerValue (100),
-                   MakeUintegerAccessor (&EvalvidClient::m_peerPort),
-                   MakeUintegerChecker<uint16_t> ())
-    .AddAttribute ("ReceiverDumpFilename",
-                   "Receiver Dump Filename",
-                   StringValue(""),
-                   MakeStringAccessor(&EvalvidClient::receiverDumpFileName),
-                   MakeStringChecker())
-    ;
-  return tid;
+    static TypeId tid = TypeId("ns3::EvalvidClient")
+                            .SetParent<Application>()
+                            .AddConstructor<EvalvidClient>()
+                            .AddAttribute("RemoteAddress",
+                                "The destination Ipv4Address of the outbound packets",
+                                Ipv4AddressValue(),
+                                MakeIpv4AddressAccessor(&EvalvidClient::m_peerAddress),
+                                MakeIpv4AddressChecker())
+                            .AddAttribute("RemotePort",
+                                "The destination port of the outbound packets",
+                                UintegerValue(100),
+                                MakeUintegerAccessor(&EvalvidClient::m_peerPort),
+                                MakeUintegerChecker<uint16_t>())
+                            .AddAttribute(
+                                "ReceiverDumpFilename", "Receiver Dump Filename", StringValue(""),
+                                MakeStringAccessor(&EvalvidClient::receiverDumpFileName),
+                                MakeStringChecker())
+                            .AddAttribute(
+                                "receiverWindowFileName", "File listing last received packets",
+                                StringValue(""),
+                                MakeStringAccessor(&EvalvidClient::receiverWindowFileName),
+                                MakeStringChecker());
+    return tid;
 }
 
-EvalvidClient::EvalvidClient ()
+EvalvidClient::EvalvidClient()
 {
-  NS_LOG_FUNCTION_NOARGS ();
-  m_sendEvent = EventId ();
+    NS_LOG_FUNCTION_NOARGS();
+    m_sendEvent = EventId();
 }
 
-EvalvidClient::~EvalvidClient ()
+EvalvidClient::~EvalvidClient()
 {
-  NS_LOG_FUNCTION_NOARGS ();
+    NS_LOG_FUNCTION_NOARGS();
 }
 
-void
-EvalvidClient::SetRemote (Ipv4Address ip, uint16_t port)
+void EvalvidClient::SetRemote(Ipv4Address ip, uint16_t port)
 {
-  m_peerAddress = ip;
-  m_peerPort = port;
+    m_peerAddress = ip;
+    m_peerPort = port;
 }
 
-void
-EvalvidClient::DoDispose (void)
+void EvalvidClient::DoDispose(void)
 {
-  NS_LOG_FUNCTION_NOARGS ();
-  Application::DoDispose ();
+    NS_LOG_FUNCTION_NOARGS();
+    Application::DoDispose();
 }
 
-void
-EvalvidClient::StartApplication (void)
+void EvalvidClient::StartApplication(void)
 {
-  NS_LOG_FUNCTION_NOARGS();
+    NS_LOG_FUNCTION_NOARGS();
 
-  if (m_socket == 0)
-    {
-      TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
-      m_socket = Socket::CreateSocket (GetNode (), tid);
-      m_socket->Bind ();
-      m_socket->Connect (InetSocketAddress (m_peerAddress, m_peerPort));
+    if (m_socket == 0) {
+        TypeId tid = TypeId::LookupByName("ns3::UdpSocketFactory");
+        m_socket = Socket::CreateSocket(GetNode(), tid);
+        m_socket->Bind();
+        m_socket->Connect(InetSocketAddress(m_peerAddress, m_peerPort));
     }
 
-
-  receiverDumpFile.open(receiverDumpFileName.c_str(), ios::out);
-  if (receiverDumpFile.fail())
-    {
-      NS_FATAL_ERROR(">> EvalvidClient: Error while opening output file: " << receiverDumpFileName.c_str());
-      return;
+    receiverDumpFile.open(receiverDumpFileName.c_str(), ios::out);
+    if (receiverDumpFile.fail()) {
+        NS_FATAL_ERROR(">> EvalvidClient: Error while opening output file: "
+            << receiverDumpFileName.c_str());
+        return;
     }
 
-  m_socket->SetRecvCallback (MakeCallback (&EvalvidClient::HandleRead, this));
+    m_socket->SetRecvCallback(MakeCallback(&EvalvidClient::HandleRead, this));
 
-  //Delay requesting to get server on line.
-  m_sendEvent = Simulator::Schedule ( Seconds(0.1) , &EvalvidClient::Send, this);
-
+    // Delay requesting to get server on line.
+    m_sendEvent = Simulator::Schedule(Seconds(0.1), &EvalvidClient::Send, this);
 }
 
-void
-EvalvidClient::Send (void)
+void EvalvidClient::Send(void)
 {
-  NS_LOG_FUNCTION_NOARGS ();
+    NS_LOG_FUNCTION_NOARGS();
 
-  Ptr<Packet> p = Create<Packet> ();
+    Ptr<Packet> p = Create<Packet>();
 
-  SeqTsHeader seqTs;
-  seqTs.SetSeq (0);
-  p->AddHeader (seqTs);
+    SeqTsHeader seqTs;
+    seqTs.SetSeq(0);
+    p->AddHeader(seqTs);
 
-  m_socket->Send (p);
+    m_socket->Send(p);
 
-  NS_LOG_INFO (">> EvalvidClient: Sending request for video streaming to EvalvidServer at "
-                << m_peerAddress << ":" << m_peerPort);
+    NS_LOG_INFO(
+        ">> EvalvidClient: Sending request for video streaming to EvalvidServer "
+        "at "
+        << m_peerAddress << ":" << m_peerPort);
 }
 
-
-void
-EvalvidClient::StopApplication ()
+void EvalvidClient::StopApplication()
 {
-  NS_LOG_FUNCTION_NOARGS ();
-  receiverDumpFile.close();
-  Simulator::Cancel (m_sendEvent);
+    NS_LOG_FUNCTION_NOARGS();
+    receiverDumpFile.close();
+    Simulator::Cancel(m_sendEvent);
 }
 
-void
-EvalvidClient::HandleRead (Ptr<Socket> socket)
+void EvalvidClient::HandleRead(Ptr<Socket> socket)
 {
-  NS_LOG_FUNCTION (this << socket);
-  Ptr<Packet> packet;
-  Address from;
-  while ((packet = socket->RecvFrom (from)))
-    {
-      if (InetSocketAddress::IsMatchingType (from))
-        {
-          if (packet->GetSize () > 0)
-            {
-              SeqTsHeader seqTs;
-              packet->RemoveHeader (seqTs);
-              uint32_t packetId = seqTs.GetSeq ();
+    NS_LOG_FUNCTION(this << socket);
+    Ptr<Packet> packet;
+    Address from;
+    int nPacketsList = 0;
+    bool nPackets2 = false;
+    std::string line;
 
-              NS_LOG_DEBUG(">> EvalvidClient: Received packet at " << Simulator::Now().GetSeconds()
-                           << "s\tid: " << packetId
-                           << "\tudp\t" << packet->GetSize() << std::endl);
+    while ((packet = socket->RecvFrom(from))) {
+        if (InetSocketAddress::IsMatchingType(from)) {
+            if (packet->GetSize() > 0) {
+                SeqTsHeader seqTs;
+                packet->RemoveHeader(seqTs);
+                uint32_t packetId = seqTs.GetSeq();
 
-              receiverDumpFile << std::fixed << std::setprecision(4) << Simulator::Now().ToDouble(ns3::Time::S)
-                               << std::setfill(' ') << std::setw(16) <<  "id " << packetId
-                               << std::setfill(' ') <<  std::setw(16) <<  "udp " << packet->GetSize()
-                               << std::endl;
-           }
+                NS_LOG_DEBUG(">> EvalvidClient: Received packet at "
+                    << Simulator::Now().GetSeconds() << "s\tid: " << packetId
+                    << "\tudp\t" << packet->GetSize() << std::endl);
+
+                receiverDumpFile << std::fixed << std::setprecision(4)
+                                 << Simulator::Now().ToDouble(ns3::Time::S)
+                                 << std::setfill(' ') << std::setw(16) << "id "
+                                 << packetId << std::setfill(' ') << std::setw(16)
+                                 << "udp " << packet->GetSize() << std::endl;
+
+                /* UM DIA EU VOU ESCREVER UM COMENTÁRIO
+                 * EXPLICANDO DIREITINHO O QUE EU FIZ AQUI.
+                 *
+                 *MAS ESTE DIA NÃO É HOJE.
+                 */
+                std::ofstream receiverWindowFile;
+                receiverWindowFile.open(receiverWindowFileName, std::ofstream::out | std::ofstream::app);
+                receiverWindowFile << packetId << std::endl;
+
+                std::ifstream ifWindow(receiverWindowFileName);
+                std::ifstream ifWindow2(receiverWindowFileName);
+                std::ofstream ofWindow("rcv_window_temp");
+
+                while (std::getline(ifWindow, line)) {
+                    ++nPacketsList;
+                }
+
+                if (nPacketsList == 21) {
+                    while (std::getline(ifWindow2, line)) {
+                        if (nPackets2)
+                            ofWindow << line << std::endl;
+                        nPackets2 = true;
+                    }
+                    nPackets2 = false;
+
+                    if (std::remove(receiverWindowFileName.c_str()))
+                        NS_LOG_DEBUG(">> EvalvidClient: Error deleting temp files.");
+                    std::rename("rcv_window_temp", receiverWindowFileName.c_str());
+                }
+
+                receiverWindowFile.close();
+                ifWindow.close();
+                ifWindow2.close();
+                ofWindow.close();
+            }
         }
     }
 }

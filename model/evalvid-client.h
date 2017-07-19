@@ -92,6 +92,8 @@ private:
 
   ofstream    receiverDumpFile;
   string      receiverDumpFileName;
+  ofstream    receiverWindowFile;
+  string      receiverWindowFileName;
   Ptr<Socket> m_socket;
   Ipv4Address m_peerAddress;
   uint16_t    m_peerPort;
